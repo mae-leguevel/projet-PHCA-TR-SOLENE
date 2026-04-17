@@ -36,16 +36,26 @@ class Price(BaseComponent):
         self.df_source['Peak_Daily'] = day_keys.map(peak_avg)
 
     def apply_strategy(self, method='threshold'):
-        self.df_source['Q_of'] = 0
+        self.df_source['Price_command'] = 0
         
         if method == 'threshold':
             low_price_mask = self.df_source['Price (EUR/MWhe)'] < self.df_source['Mean_Daily']
-            self.df_source.loc[low_price_mask, 'Q_of'] = 1
+            self.df_source.loc[low_price_mask, 'Price_command'] = 1
             
             high_price_mask = self.df_source['Price (EUR/MWhe)'] > self.df_source['Peak_Daily']
-            self.df_source.loc[high_price_mask, 'Q_of'] = -1
-        
-        self.types_demandes += ['Q_of', 'Mean_Daily', 'Peak_Daily']
+            self.df_source.loc[high_price_mask, 'Price_command'] = -1
+
+        elif method == 'simplified':
+            hours = self.df_source['Date'].dt.hour
+            
+            turb_mask = ((hours >= 7) & (hours < 11)) | ((hours >= 17) & (hours < 23))
+            self.df_source.loc[turb_mask, 'Price_command'] = -1
+            
+
+            pump_mask = (hours >= 11) & (hours < 17)
+            self.df_source.loc[pump_mask, 'Price_command'] = 1
+            
+        self.types_demandes += ['Price_command', 'Mean_Daily', 'Peak_Daily']
         print(f"Stratégie de prix '{method}' appliquée.")
 
     def update(self, df_global):

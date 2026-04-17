@@ -33,5 +33,5 @@ class BaseComponent(ABC):
     def update_global_df(self, df_global):
         """Remplit le DataFrame principal avec les fonctions d'interpolation"""
         for t, func in self.interpolators.items():
-            df_global[f"{self.name}_{t}"] = func(df_global['Temps relatif (h)'])
+            df_global[f"{t}"] = func(df_global['Relativ_time_h'])
         return df_global

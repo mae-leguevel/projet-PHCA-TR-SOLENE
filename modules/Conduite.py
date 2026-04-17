@@ -83,7 +83,8 @@ class Conduit(BaseComponent):
         phi_total = (p_losses * Q) + (self.geometry.U * self.geometry.surface * (T_ext - T_in))
         
         #Temperature variation
-        dT = np.where(Q > 0, phi_total / (rho * Q * Cp), 0)
+        dT = np.zeros_like(Q)
+        np.divide(phi_total, (rho * Q * Cp), out=dT, where=(Q > 0))
         T_out = T_in + dT
 
         #Saving in the df

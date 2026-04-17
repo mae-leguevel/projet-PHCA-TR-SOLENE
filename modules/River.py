@@ -83,6 +83,9 @@ class River(BaseComponent):
         elif method == 'threshold':
             self.df_source['Q_prelevable'] = (self.df_source[source_col] - param).clip(lower=0)
         
+        elif method == "simplified":
+            self.df_source['Q_prelevable'] = param
+        
         else:
             raise ValueError(f"Méthode {method} non reconnue.")
         if 'Q_prelevable' not in self.types_demandes:

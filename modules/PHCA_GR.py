@@ -57,14 +57,15 @@ class PHCA(BaseComponent):
         
         return (interpol.RegularGridInterpolator((rho_axis, u_axis), P_grid, bounds_error=False, fill_value=None),
                 interpol.RegularGridInterpolator((rho_axis, u_axis), T_grid, bounds_error=False, fill_value=None))
+    
 
     def _get_inputs(self, df_global):
         """Calculate command fucntions by interpolation"""
-        self.f_q_riv = interpol.interp1d(df_global['Temps relatif (h)'] * 3600, 
-                                       df_global['Ariege_Q_prelevable'], 
+        self.f_q_riv = interpol.interp1d(df_global['Relativ_time_h'] * 3600, 
+                                       df_global['Q_prelevable'], 
                                        kind='linear', fill_value="extrapolate")
-        self.f_cmd_prix = interpol.interp1d(df_global['Temps relatif (h)'] * 3600, 
-                                         df_global['Price_Q_of'], 
+        self.f_cmd_prix = interpol.interp1d(df_global['Relativ_time_h'] * 3600, 
+                                         df_global['Price_command'], 
                                          kind='previous', fill_value="extrapolate")
 
     def _calculate_heat_transfers(self, z, T_air, T_eau, T_paroi):
@@ -133,8 +134,8 @@ class PHCA(BaseComponent):
         #addition of the command functions
         self._get_inputs(df_global)
         #time in seconds
-        t_span = (0, df_global['Temps relatif (h)'].max() * 3600)
-        t_eval = df_global['Temps relatif (h)'].values * 3600
+        t_span = (0, df_global['Relativ_time_h'].max() * 3600)
+        t_eval = df_global['Relativ_time_h'].values * 3600
         
         sol = solve_ivp(
             fun=lambda t, Y: self._equations_differentielles(t, Y, Q_p_max, Q_t_max),
@@ -154,11 +155,19 @@ class PHCA(BaseComponent):
         u = U_tot / (self.m_air + m_vap)
         
 
-        df_global[f'{self.name}_Pression'] = self.look_P((rho, u))
-        df_global[f'{self.name}_T_air'] = self.look_T((rho, u))
-        df_global[f'{self.name}_z'] = z
-        df_global[f'{self.name}_T_eau'] = sol.y[2]
-        df_global[f'{self.name}_T_paroi'] = sol.y[3]
+        df_global[f'Pression'] = self.look_P((rho, u))
+        df_global[f'T_air'] = self.look_T((rho, u))
+        df_global[f'z'] = z
+        df_global[f'T_eau'] = sol.y[2]
+        df_global[f'T_paroi'] = sol.y[3]
+
+        dz = df_global['z'].diff()
+        dt = df_global['Relativ_time_h'].diff() * 3600   
+        q = self.A * (dz / dt)
+        df_global['Q_in'] = q.clip(lower=0)
+        df_global['Q_in'] = df_global['Q_in'].fillna(0)
+        df_global['Q_out'] = q.clip(upper=0).abs()
+        df_global['Q_out'] = df_global['Q_out'].fillna(0)
     
         return df_global
     
